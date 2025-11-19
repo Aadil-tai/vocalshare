@@ -22,7 +22,6 @@ export const authOptions: AuthOptions = {
                     return null;
                 }
 
-                // Static credentials check
                 if (
                     credentials.email === "aadiltaitech@gmail.com" &&
                     credentials.password === "Test@123"
