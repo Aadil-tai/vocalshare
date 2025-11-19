@@ -5,15 +5,16 @@ import { authOptions } from "../auth/[...nextauth]/route"; // We need to export 
 import { supabase } from "@/lib/supabase";
 
 export async function POST(req: NextRequest) {
-    console.log("Upload API called");
+    try {
+        console.log("Upload API called");
 
-    const session = await getServerSession(authOptions);
-    console.log("Session:", session);
+        const session = await getServerSession(authOptions);
+        console.log("Session:", session);
 
-    if (!session || !session.user?.email) {
-        console.log("Unauthorized: No session");
-        return NextResponse.json({ error: "Unauthorized - Please log in" }, { status: 401 });
-    }
+        if (!session || !session.user?.email) {
+            console.log("Unauthorized: No session");
+            return NextResponse.json({ error: "Unauthorized - Please log in" }, { status: 401 });
+        }
 
     const formData = await req.formData();
     const file = formData.get("file") as File;
@@ -99,8 +100,12 @@ export async function POST(req: NextRequest) {
 
         console.log("Song created successfully:", song.id);
         return NextResponse.json({ Message: "Success", status: 201, song });
-    } catch (error) {
-        console.log("Error occured ", error);
-        return NextResponse.json({ Message: "Failed", status: 500, error: String(error) });
+    } catch (innerError) {
+        console.log("Inner error occurred:", innerError);
+        return NextResponse.json({ Message: "Failed", status: 500, error: String(innerError) });
+    }
+    } catch (outerError) {
+        console.log("Outer error occurred:", outerError);
+        return NextResponse.json({ Message: "Failed", status: 500, error: String(outerError) }, { status: 500 });
     }
 }
