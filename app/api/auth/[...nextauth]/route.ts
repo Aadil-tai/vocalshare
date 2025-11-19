@@ -22,31 +22,20 @@ export const authOptions: AuthOptions = {
                     return null;
                 }
 
-                const user = await prisma.user.findUnique({
-                    where: {
-                        email: credentials.email,
-                    },
-                });
-
-                if (!user) {
-                    return null;
+                // Static credentials check
+                if (
+                    credentials.email === "aadiltaitech@gmail.com" &&
+                    credentials.password === "Test@123"
+                ) {
+                    return {
+                        id: "1",
+                        email: "aadiltaitech@gmail.com",
+                        name: "Aadil",
+                        image: null,
+                    };
                 }
 
-                const isPasswordValid = await compare(
-                    credentials.password,
-                    user.password
-                );
-
-                if (!isPasswordValid) {
-                    return null;
-                }
-
-                return {
-                    id: user.id + "",
-                    email: user.email,
-                    name: user.name,
-                    image: user.image,
-                };
+                return null;
             },
         }),
     ],
