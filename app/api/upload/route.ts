@@ -1,9 +1,8 @@
-import { writeFile } from "fs/promises";
 import { NextRequest, NextResponse } from "next/server";
-import path from "path";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../auth/[...nextauth]/route"; // We need to export authOptions from there
+import { supabase } from "@/lib/supabase";
 
 export async function POST(req: NextRequest) {
     const session = await getServerSession(authOptions);
@@ -21,14 +20,29 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "No file received." }, { status: 400 });
     }
 
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const filename = Date.now() + "_" + file.name.replaceAll(" ", "_");
+    const buffer = await file.arrayBuffer();
+    const filename = `${Date.now()}_${file.name.replaceAll(" ", "_")}`;
 
     try {
-        await writeFile(
-            path.join(process.cwd(), "public/uploads/" + filename),
-            buffer
-        );
+        // Upload to Supabase Storage
+        const { data: uploadData, error: uploadError } = await supabase
+            .storage
+            .from('uploads')
+            .upload(filename, buffer, {
+                contentType: file.type,
+                upsert: false
+            });
+
+        if (uploadError) {
+            console.error("Supabase upload error:", uploadError);
+            return NextResponse.json({ error: "Upload failed" }, { status: 500 });
+        }
+
+        // Get public URL
+        const { data: { publicUrl } } = supabase
+            .storage
+            .from('uploads')
+            .getPublicUrl(filename);
 
         // Get user ID
         const user = await prisma.user.findUnique({
@@ -42,7 +56,7 @@ export async function POST(req: NextRequest) {
         const song = await prisma.song.create({
             data: {
                 title: title || file.name,
-                url: `/uploads/${filename}`,
+                url: publicUrl,
                 duration: duration,
                 userId: user.id
             }
