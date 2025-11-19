@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
 
         if (uploadError) {
             console.error("Supabase upload error:", uploadError);
-            return NextResponse.json({ error: "Upload failed" }, { status: 500 });
+            return NextResponse.json({ error: uploadError.message || "Upload failed" }, { status: 500 });
         }
 
         // Get public URL
@@ -44,13 +44,30 @@ export async function POST(req: NextRequest) {
             .from('uploads')
             .getPublicUrl(filename);
 
-        // Get user ID
-        const user = await prisma.user.findUnique({
-            where: { email: session.user.email }
-        });
+        // Use static user ID for static auth, or find/create user
+        let userId = "1"; // Default static user ID
 
-        if (!user) {
-            return NextResponse.json({ error: "User not found" }, { status: 404 });
+        try {
+            const user = await prisma.user.findUnique({
+                where: { email: session.user.email }
+            });
+
+            if (user) {
+                userId = user.id;
+            } else {
+                // Create user if doesn't exist
+                const newUser = await prisma.user.create({
+                    data: {
+                        email: session.user.email,
+                        name: session.user.name || "User",
+                        password: "static", // placeholder since we're using static auth
+                    }
+                });
+                userId = newUser.id;
+            }
+        } catch (dbError) {
+            console.error("Database error:", dbError);
+            // Continue with static user ID if database fails
         }
 
         const song = await prisma.song.create({
@@ -58,13 +75,13 @@ export async function POST(req: NextRequest) {
                 title: title || file.name,
                 url: publicUrl,
                 duration: duration,
-                userId: user.id
+                userId: userId
             }
         })
 
         return NextResponse.json({ Message: "Success", status: 201, song });
     } catch (error) {
         console.log("Error occured ", error);
-        return NextResponse.json({ Message: "Failed", status: 500 });
+        return NextResponse.json({ Message: "Failed", status: 500, error: String(error) });
     }
 }
