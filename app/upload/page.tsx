@@ -36,19 +36,25 @@ export default function UploadPage() {
         // formData.append("duration", duration.toString()); // If we had duration
 
         try {
+            console.log("Uploading file:", file.name, file.type, file.size);
             const res = await fetch("/api/upload", {
                 method: "POST",
                 body: formData,
             });
 
+            console.log("Response status:", res.status);
+            const data = await res.json();
+            console.log("Response data:", data);
+
             if (res.ok) {
+                alert("Upload successful!");
                 router.push("/dashboard");
             } else {
-                alert("Upload failed");
+                alert(`Upload failed: ${data.error || data.Message || "Unknown error"}`);
             }
         } catch (error) {
-            console.error(error);
-            alert("Error uploading");
+            console.error("Upload error:", error);
+            alert(`Error uploading: ${error}`);
         } finally {
             setUploading(false);
         }
